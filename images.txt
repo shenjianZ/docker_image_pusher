@@ -13,7 +13,9 @@
 #xhofe/alist:latest
 
 #mongo:7.0
-zookeeper:3.8
-wurstmeister/kafka:2.12-2.8.0
+
+#zookeeper:3.8
+confluentinc/cp-zookeeper:7.6.0
+confluentinc/cp-kafka:7.6.0
 #支持指定架构
 --platform=linux/arm64 xiaoyaliu/alist
