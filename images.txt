@@ -21,5 +21,6 @@ apache/spark:3.5.0
 #openeuler/flume:latest
 #subfuzion/netcat
 #hello-world
+privoce/vocechat-server:latest
 #支持指定架构
 --platform=linux/arm64 xiaoyaliu/alist
