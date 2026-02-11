@@ -22,7 +22,7 @@ apache/spark:3.5.0
 #subfuzion/netcat
 #hello-world
 #privoce/vocechat-server:latest
-clux/muslrust
-
+#clux/muslrust
+cloudreve/cloudreve:4.13.0
 #支持指定架构
 --platform=linux/arm64 xiaoyaliu/alist
