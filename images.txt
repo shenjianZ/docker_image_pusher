@@ -23,6 +23,9 @@ apache/spark:3.5.0
 #hello-world
 #privoce/vocechat-server:latest
 #clux/muslrust
-cloudreve/cloudreve:4.13.0
+#cloudreve/cloudreve:4.13.0
+nginx:mainline-alpine
+
+
 #支持指定架构
 --platform=linux/arm64 xiaoyaliu/alist
