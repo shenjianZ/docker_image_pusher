@@ -36,48 +36,49 @@ jobs:
 
     - name: Pull, tag, push images
       run: |
-        # 过滤有效镜像（忽略注释和空行）
-        valid_lines=$(grep -vE '^\s*#|^\s*$' images.txt || true)
-
-        if [ -z "$valid_lines" ]; then
-          echo "No images to process. Exiting..."
-          exit 0
-        fi
-
         while IFS= read -r line || [ -n "$line" ]; do
+          # 去掉前后空格
+          line="$(echo "$line" | xargs)"
+          # 忽略空行和注释
           [[ -z "$line" ]] && continue
           [[ "$line" =~ ^# ]] && continue
 
-          # 支持 --platform=linux/arm64 等，可去掉多余空格
-          platform_prefix=""
-          if [[ "$line" =~ --platform=([^\ ]+) ]]; then
+          # 提取 platform
+          platform=""
+          image_line="$line"
+          if [[ "$line" =~ --platform=([^\ ]+)\ (.+) ]]; then
               platform="${BASH_REMATCH[1]}"
-              line="${line/--platform=$platform/}"
-              platform_prefix="${platform//\//_}_"
+              image_line="${BASH_REMATCH[2]}"
+              echo "Detected platform: $platform"
           fi
 
-          image=$(echo "$line" | awk '{print $NF}')
+          # 真实镜像名
+          image="$image_line"
           if [ -z "$image" ]; then
               echo "Skipping empty line after cleanup..."
               continue
           fi
 
-          image_name_tag=$(echo "$image" | awk -F'/' '{print $NF}')
-          image_name_tag="${image_name_tag%%@*}"
-          new_image="$ALIYUN_REGISTRY/$ALYUN_NAME_SPACE/$platform_prefix$image_name_tag"
+          # new_image = 原镜像名（不加 prefix）
+          new_image="$image"
 
           echo "=============================="
           echo "Processing: $image"
           echo "Tag as: $new_image"
           echo "=============================="
 
-          docker pull $image
-          docker tag $image $new_image
-          docker push $new_image
+          if [ -z "$platform" ]; then
+              docker pull "$image"
+              docker tag "$image" "$new_image"
+              docker push "$new_image"
+          else
+              # 多平台
+              docker buildx build --platform "$platform" --pull -t "$new_image" --push --load <(echo "FROM $image")
+          fi
 
-          echo "Cleaning up disk..."
-          docker rmi $image || true
-          docker rmi $new_image || true
+          # 清理空间
+          docker rmi "$image" || true
+          docker rmi "$new_image" || true
           docker system prune -af --volumes || true
           df -hT
-        done <<< "$valid_lines"
+        done < images.txt
