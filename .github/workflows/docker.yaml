@@ -1,27 +1,23 @@
-name: Docker Sync Extreme
+name: Docker Mirror
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
-  schedule:
-    - cron: '0 23 * * *'
+    branches: [ main ]  # 只有 push main 分支触发
+  workflow_dispatch:     # 手动触发
 
 env:
   ALIYUN_REGISTRY: "${{ secrets.ALIYUN_REGISTRY }}"
   ALIYUN_NAME_SPACE: "${{ secrets.ALIYUN_NAME_SPACE }}"
+  ALIYUN_REGISTRY_USER: "${{ secrets.ALIYUN_REGISTRY_USER }}"
+  ALIYUN_REGISTRY_PASSWORD: "${{ secrets.ALIYUN_REGISTRY_PASSWORD }}"
 
 jobs:
-  sync-images:
+  build:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    # ----------------------------
-    - name: Check disk before
-      run: df -hT
-
-    # ----------------------------
-    # 扩容 runner 磁盘
     - name: Maximize build space
       uses: easimon/maximize-build-space@master
       with:
@@ -29,65 +25,59 @@ jobs:
         swap-size-mb: 128
         remove-dotnet: 'true'
         remove-haskell: 'true'
-        remove-android: 'true'
-        remove-codeql: 'true'
         build-mount-path: '/var/lib/docker/'
 
-    - name: Restart Docker
+    - name: Restart docker
       run: sudo service docker restart
 
-    - name: Check disk after maximize
-      run: df -hT
-
-    # ----------------------------
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    # ----------------------------
-    # 安全登录阿里云
     - name: Login to Aliyun Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ secrets.ALIYUN_REGISTRY }}
-        username: ${{ secrets.ALIYUN_REGISTRY_USER }}
-        password: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
-
-    # ----------------------------
-    # 批量 pull -> tag -> push -> prune
-    - name: Pull, Tag, Push Images
       run: |
-        set -euo pipefail
+        echo $ALIYUN_REGISTRY_PASSWORD | docker login $ALIYUN_REGISTRY -u $ALIYUN_REGISTRY_USER --password-stdin
 
-        # 先确保干净
-        docker system prune -af --volumes || true
+    - name: Pull, tag, push images
+      run: |
+        # 过滤有效镜像（忽略注释和空行）
+        valid_lines=$(grep -vE '^\s*#|^\s*$' images.txt || true)
+
+        if [ -z "$valid_lines" ]; then
+          echo "No images to process. Exiting..."
+          exit 0
+        fi
 
         while IFS= read -r line || [ -n "$line" ]; do
-            # 跳过空行和注释
-            [[ -z "$line" ]] && continue
-            [[ "$line" =~ ^# ]] && continue
+          [[ -z "$line" ]] && continue
+          [[ "$line" =~ ^# ]] && continue
 
-            image=$(echo "$line" | awk '{print $NF}')
-            image_name_tag=$(echo "$image" | awk -F'/' '{print $NF}')
-            image_name_tag="${image_name_tag%%@*}"
+          # 支持 --platform=linux/arm64 等，可去掉多余空格
+          platform_prefix=""
+          if [[ "$line" =~ --platform=([^\ ]+) ]]; then
+              platform="${BASH_REMATCH[1]}"
+              line="${line/--platform=$platform/}"
+              platform_prefix="${platform//\//_}_"
+          fi
 
-            new_image="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/$image_name_tag"
+          image=$(echo "$line" | awk '{print $NF}')
+          if [ -z "$image" ]; then
+              echo "Skipping empty line after cleanup..."
+              continue
+          fi
 
-            echo "=============================="
-            echo "Processing: $image"
-            echo "Tag as: $new_image"
-            echo "=============================="
+          image_name_tag=$(echo "$image" | awk -F'/' '{print $NF}')
+          image_name_tag="${image_name_tag%%@*}"
+          new_image="$ALIYUN_REGISTRY/$ALYUN_NAME_SPACE/$platform_prefix$image_name_tag"
 
-            docker pull $image
-            docker tag $image $new_image
-            docker push $new_image
+          echo "=============================="
+          echo "Processing: $image"
+          echo "Tag as: $new_image"
+          echo "=============================="
 
-            echo "Cleaning Docker layers & volumes..."
-            docker rmi $image || true
-            docker rmi $new_image || true
-            docker system prune -af --volumes || true
+          docker pull $image
+          docker tag $image $new_image
+          docker push $new_image
 
-            echo "Disk usage:"
-            df -hT
-            echo "------------------------------"
-
-        done < images.txt
+          echo "Cleaning up disk..."
+          docker rmi $image || true
+          docker rmi $new_image || true
+          docker system prune -af --volumes || true
+          df -hT
+        done <<< "$valid_lines"
