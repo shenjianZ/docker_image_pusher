@@ -26,6 +26,6 @@
 #cloudreve/cloudreve:4.13.0
 #nginx:mainline-alpine
 postgres
-  
+#xiaoyaliu/alist
 #支持指定架构
---platform=linux/arm64 xiaoyaliu/alist
+--platform=linux/arm64
