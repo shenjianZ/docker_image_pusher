@@ -12,8 +12,7 @@ env:
   ALIYUN_NAME_SPACE: "${{ secrets.ALIYUN_NAME_SPACE }}"
   ALIYUN_REGISTRY_USER: "${{ secrets.ALIYUN_REGISTRY_USER }}"
   ALIYUN_REGISTRY_PASSWORD: "${{ secrets.ALIYUN_REGISTRY_PASSWORD }}"
-  # 指定固定架构
-  DEFAULT_PLATFORM: "linux/arm64"
+  # 删除默认平台，不再固定 linux/arm64
 
 jobs:
 
@@ -58,45 +57,24 @@ jobs:
       run: |
         docker login -u $ALIYUN_REGISTRY_USER -p $ALIYUN_REGISTRY_PASSWORD $ALIYUN_REGISTRY
         
-        # 设定默认架构
-        PLATFORM=$DEFAULT_PLATFORM
-        echo "当前设定架构: $PLATFORM"
-        
         while IFS= read -r line || [ -n "$line" ]; do
-            # 忽略空行与注释
+            # 忽略空行和注释
             [[ -z "$line" ]] && continue
             if echo "$line" | grep -q '^\s*#'; then continue; fi
         
-            # 获取原始镜像名 (去除前后空格)
             image=$(echo "$line" | xargs)
             
             echo "----------------------------------------------------"
             echo "正在处理: $image"
             
-            # 1. 拉取镜像 (指定架构)
-            # 这里的 echo 是为了日志显示方便
-            echo "docker pull --platform $PLATFORM $image"
-            docker pull --platform "$PLATFORM" "$image"
-            
-            # 2. 计算新的 Tag
-            # 获取 镜像名:版本号 (例如 bitnami/redis:latest -> redis:latest)
-            # 逻辑：取最后一个斜杠后的内容
+            # 取最后斜杠后的镜像名:tag
             image_name_tag=$(echo "$image" | awk -F'/' '{print $NF}')
-            
-            # 拼接目标镜像地址
-            # 格式: registry.cn-hangzhou.aliyuncs.com/命名空间/镜像名:版本
             new_image="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/$image_name_tag"
-            
-            # 3. 打标签并推送
-            echo "docker tag $image $new_image"
-            docker tag "$image" "$new_image"
-            
-            echo "docker push $new_image"
-            docker push "$new_image"
-            
-            # 4. 清理空间
-            echo "清理镜像..."
-            docker rmi "$image"
-            docker rmi "$new_image"
-            
+
+            echo "复制多架构镜像到阿里云..."
+            docker buildx imagetools create \
+              --tag "$new_image" \
+              "$image"
+
+            echo "完成: $new_image"
         done < images.txt
