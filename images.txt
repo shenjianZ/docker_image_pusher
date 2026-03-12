@@ -5,7 +5,7 @@
 #rabbitmq:3.13-management
 #gitblit/gitblit
 #nacos/nacos-server
-#gitea/gitea:1.21.1
+gitea/gitea:1.25.4
 #jenkins/jenkins:2.464-jdk21
 #vulhub/flask:1.1.1
 #支持私库
