@@ -5,7 +5,7 @@
 #rabbitmq:3.13-management
 #gitblit/gitblit
 #nacos/nacos-server
-gitea/gitea:1.25.4
+#gitea/gitea:1.25.4
 #jenkins/jenkins:2.464-jdk21
 #vulhub/flask:1.1.1
 #支持私库
@@ -27,7 +27,7 @@ gitea/gitea:1.25.4
 #nginx:mainline-alpine
 #postgres
 #xiaoyaliu/alist
-redis:7-alpine
-
+#redis:7-alpine
+quay.io/minio/aistor/minio:latest
 
 #支持指定架构
