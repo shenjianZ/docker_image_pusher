@@ -28,6 +28,6 @@
 #postgres
 #xiaoyaliu/alist
 #redis:7-alpine
-quay.io/minio/aistor/minio:latest
+#quay.io/minio/aistor/minio:latest
 
 #支持指定架构
