@@ -29,5 +29,6 @@
 #xiaoyaliu/alist
 #redis:7-alpine
 #quay.io/minio/aistor/minio:latest
-rabbitmq:4.3-management
+apache/rocketmq:5.1.0
+apacherocketmq/rocketmq-dashboard:2.1.0
 #支持指定架构
