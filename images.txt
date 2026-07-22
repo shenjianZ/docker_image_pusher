@@ -31,8 +31,8 @@
 #quay.io/minio/aistor/minio:latest
 #apache/rocketmq:5.1.0
 #apacherocketmq/rocketmq-dashboard:2.1.0
-
 #gitea/gitea:1.26.2
+#certbot/certbot:latest
 
-certbot/certbot:latest
+calciumion/new-api:latest
 #支持指定架构
