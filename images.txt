@@ -38,3 +38,4 @@
 #支持指定架构
 
 gitea/gitea:28.3.0
+cloudreve/cloudreve:4.19.1
